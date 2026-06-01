@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0a0c10;
+  --color-surface: #0e1117;
+  --color-panel: #14181f;
+  --color-panel-2: #191e27;
+  --color-line: #242b38;
+  --color-line-soft: #1c222d;
+  --color-fg: #e7eaf0;
+  --color-muted: #8b94a7;
+  --color-faint: #5a6473;
+
+  --color-signal: #c8f751;
+  --color-signal-dim: #94b93b;
+
+  --color-pass: #4ade80;
+  --color-fail: #fb6f6f;
+  --color-warn: #fbbf24;
+  --color-info: #60a5fa;
+  --color-skip: #6b7280;
+
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-ink);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(60% 50% at 100% 0%, rgba(200, 247, 81, 0.05) 0%, transparent 60%),
+    radial-gradient(45% 40% at 0% 0%, rgba(96, 165, 250, 0.04) 0%, transparent 55%),
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px;
+  background-attachment: fixed;
+}
+
+::selection {
+  background: var(--color-signal);
+  color: #0a0c10;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.label-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+/* Hairline framed panel */
+.panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
+    var(--color-panel);
+  border: 1px solid var(--color-line);
+}
+
+/* Corner ticks decoration */
+.ticked {
+  position: relative;
+}
+.ticked::before,
+.ticked::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: var(--color-signal);
+  opacity: 0.5;
+}
+.ticked::before {
+  top: -1px;
+  left: -1px;
+  border-top: 1px solid;
+  border-left: 1px solid;
+}
+.ticked::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 1px solid;
+  border-right: 1px solid;
+}
+
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(900%); }
+}
+.scanline {
+  animation: scan 2.4s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(200, 247, 81, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(200, 247, 81, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(200, 247, 81, 0); }
+}
+.pulse {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rise {
+  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-faint);
+}
+
+input:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}
