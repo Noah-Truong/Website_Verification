@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { findUserByEmail } from "@/lib/db";
-import { createSession, verifyPassword } from "@/lib/auth";
+import { verifyCredentials } from "@/lib/users";
+import { createSession } from "@/lib/auth";
 
 const schema = z.object({
   email: z.string().trim().email("Enter a valid email"),
@@ -25,8 +25,8 @@ export async function POST(req: Request) {
   }
 
   const { email, password } = parsed.data;
-  const user = await findUserByEmail(email);
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  const user = await verifyCredentials(email, password);
+  if (!user) {
     return NextResponse.json(
       { error: "Incorrect email or password." },
       { status: 401 },

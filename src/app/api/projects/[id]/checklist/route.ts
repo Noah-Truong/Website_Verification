@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth";
-import { mutate } from "@/lib/db";
+import { updateChecklistItem } from "@/lib/db";
 
 const schema = z.object({
   itemId: z.string().min(1),
@@ -29,15 +29,9 @@ export async function PATCH(
   }
   const { itemId, checked, note } = parsed.data;
 
-  const updated = await mutate((db) => {
-    const project = db.projects.find((p) => p.id === id && p.ownerId === userId);
-    if (!project) return null;
-    const item = project.checklist.find((c) => c.id === itemId);
-    if (!item) return null;
-    if (checked !== undefined) item.checked = checked;
-    if (note !== undefined) item.note = note;
-    project.updatedAt = new Date().toISOString();
-    return item;
+  const updated = await updateChecklistItem(id, userId, itemId, {
+    checked,
+    note,
   });
 
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });

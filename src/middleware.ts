@@ -4,7 +4,7 @@ import { jwtVerify } from "jose";
 
 const COOKIE_NAME = "nortiq_session";
 
-const PUBLIC_PATHS = ["/login", "/register"];
+const PUBLIC_PATHS = ["/login"];
 
 function getSecret(): Uint8Array {
   const secret =

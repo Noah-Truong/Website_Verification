@@ -1,8 +1,7 @@
 import "server-only";
-import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { findUserById } from "./db";
+import { findUserById } from "./users";
 import type { User } from "./types";
 
 const COOKIE_NAME = "nortiq_session";
@@ -12,17 +11,6 @@ function getSecret(): Uint8Array {
   const secret =
     process.env.AUTH_SECRET ?? "nortiq-dev-secret-change-me-in-production";
   return new TextEncoder().encode(secret);
-}
-
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
-}
-
-export async function verifyPassword(
-  password: string,
-  hash: string,
-): Promise<boolean> {
-  return bcrypt.compare(password, hash);
 }
 
 export async function createSession(userId: string): Promise<void> {
@@ -60,16 +48,8 @@ export async function getSessionUserId(): Promise<string | null> {
   }
 }
 
-export type SafeUser = Omit<User, "passwordHash">;
-
-export function toSafeUser(user: User): SafeUser {
-  const { passwordHash: _passwordHash, ...rest } = user;
-  return rest;
-}
-
-export async function getCurrentUser(): Promise<SafeUser | null> {
+export async function getCurrentUser(): Promise<User | null> {
   const userId = await getSessionUserId();
   if (!userId) return null;
-  const user = await findUserById(userId);
-  return user ? toSafeUser(user) : null;
+  return findUserById(userId);
 }

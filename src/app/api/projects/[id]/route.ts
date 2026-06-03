@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
-import { getProject, mutate } from "@/lib/db";
+import { getProject, deleteProject } from "@/lib/db";
 
 export async function GET(
   _req: Request,
@@ -22,12 +22,7 @@ export async function DELETE(
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
 
-  const removed = await mutate((db) => {
-    const idx = db.projects.findIndex((p) => p.id === id && p.ownerId === userId);
-    if (idx === -1) return false;
-    db.projects.splice(idx, 1);
-    return true;
-  });
+  const removed = await deleteProject(id, userId);
 
   if (!removed) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });

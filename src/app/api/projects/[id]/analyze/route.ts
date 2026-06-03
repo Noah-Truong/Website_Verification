@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
-import { getProject, mutate } from "@/lib/db";
+import { getProject, setAnalysis } from "@/lib/db";
 import { analyzeRequirements, AiConfigError } from "@/lib/ai/analyze";
 import { fetchSiteContent } from "@/lib/verify/content";
 import { normalizeUrl } from "@/lib/verify/utils";
@@ -38,12 +38,7 @@ export async function POST(
     const pages = await fetchSiteContent(pageUrls);
     const analysis = await analyzeRequirements(project.checklist, latestRun, pages);
 
-    await mutate((db) => {
-      const target = db.projects.find((p) => p.id === id && p.ownerId === userId);
-      if (!target) return;
-      target.aiAnalysis = analysis;
-      target.updatedAt = new Date().toISOString();
-    });
+    await setAnalysis(id, userId, analysis);
 
     return NextResponse.json({ analysis });
   } catch (err) {

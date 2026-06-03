@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
-import { getProject, mutate } from "@/lib/db";
+import { getProject, addRun } from "@/lib/db";
 import { runVerification } from "@/lib/verify/runner";
 
 const MAX_STORED_RUNS = 10;
@@ -18,13 +18,7 @@ export async function POST(
 
   const run = await runVerification(project.id, project.websiteUrl);
 
-  await mutate((db) => {
-    const target = db.projects.find((p) => p.id === id && p.ownerId === userId);
-    if (!target) return;
-    target.runs.unshift(run);
-    target.runs = target.runs.slice(0, MAX_STORED_RUNS);
-    target.updatedAt = new Date().toISOString();
-  });
+  await addRun(id, userId, run, MAX_STORED_RUNS);
 
   return NextResponse.json({ run });
 }

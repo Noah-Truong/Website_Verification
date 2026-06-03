@@ -8,7 +8,9 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  // Send unauthenticated/stale sessions through logout so the cookie is cleared
+  // before landing on /login (otherwise the middleware bounces them back).
+  if (!user) redirect("/api/auth/logout");
 
   return (
     <div className="min-h-screen flex flex-col">

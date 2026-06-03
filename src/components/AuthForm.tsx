@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
-export function AuthForm({ mode }: { mode: "login" | "register" }) {
+export function AuthForm({ mode = "login" }: { mode?: "login" }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,17 +13,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     setError(null);
     setLoading(true);
     const form = new FormData(e.currentTarget);
-    const body =
-      mode === "register"
-        ? {
-            name: form.get("name"),
-            email: form.get("email"),
-            password: form.get("password"),
-          }
-        : { email: form.get("email"), password: form.get("password") };
+    const body = {
+      email: form.get("email"),
+      password: form.get("password"),
+    };
 
     try {
-      const res = await fetch(`/api/auth/${mode}`, {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
@@ -45,15 +40,6 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      {mode === "register" && (
-        <Field
-          label="Full name"
-          name="name"
-          type="text"
-          placeholder="Jane Developer"
-          autoComplete="name"
-        />
-      )}
       <Field
         label="Work email"
         name="email"
@@ -65,8 +51,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         label="Password"
         name="password"
         type="password"
-        placeholder={mode === "register" ? "At least 8 characters" : "••••••••"}
-        autoComplete={mode === "register" ? "new-password" : "current-password"}
+        placeholder="••••••••"
+        autoComplete="current-password"
       />
 
       {error && (
@@ -80,30 +66,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         disabled={loading}
         className="mt-1 bg-signal text-ink font-semibold py-3 text-sm tracking-wide hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading
-          ? "Authenticating…"
-          : mode === "register"
-            ? "Create account"
-            : "Sign in"}
+        {loading ? "Authenticating…" : "Sign in"}
       </button>
-
-      <p className="text-sm text-muted text-center">
-        {mode === "register" ? (
-          <>
-            Already have access?{" "}
-            <Link href="/login" className="text-signal hover:underline">
-              Sign in
-            </Link>
-          </>
-        ) : (
-          <>
-            Need an account?{" "}
-            <Link href="/register" className="text-signal hover:underline">
-              Register
-            </Link>
-          </>
-        )}
-      </p>
     </form>
   );
 }

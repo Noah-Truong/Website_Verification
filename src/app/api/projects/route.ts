@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { promises as fs } from "fs";
-import path from "path";
 import { getSessionUserId } from "@/lib/auth";
-import { getProjectsForUser, mutate, UPLOAD_DIR } from "@/lib/db";
+import { getProjectsForUser, createProject } from "@/lib/db";
 import { parseDocument } from "@/lib/parse/document";
 import { normalizeUrl } from "@/lib/verify/utils";
 import type { ChecklistItem, ClientDocument, Project } from "@/lib/types";
@@ -70,11 +68,6 @@ export async function POST(req: Request) {
         charCount: parsed.text.length,
       };
       checklist = parsed.items.map((item) => ({ ...item, checked: false }));
-
-      // Persist the original upload for reference.
-      await fs.mkdir(UPLOAD_DIR, { recursive: true });
-      const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-      await fs.writeFile(path.join(UPLOAD_DIR, `${randomUUID()}-${safeName}`), buffer);
     } catch {
       return NextResponse.json(
         { error: "Could not read the uploaded document. Try PDF, DOCX, TXT, or MD." },
@@ -99,9 +92,7 @@ export async function POST(req: Request) {
     runs: [],
   };
 
-  await mutate((db) => {
-    db.projects.push(project);
-  });
+  await createProject(project);
 
   return NextResponse.json({ project });
 }

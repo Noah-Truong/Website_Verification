@@ -1,80 +1,158 @@
-import { promises as fs } from "fs";
-import path from "path";
-import type { Database, Project, User } from "./types";
+import { getSupabase } from "./supabase";
+import type {
+  AiAnalysis,
+  ChecklistItem,
+  Project,
+  VerificationRun,
+} from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DATA_DIR, "store.json");
-export const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
-
-const EMPTY_DB: Database = { users: [], projects: [] };
-
-let writeQueue: Promise<void> = Promise.resolve();
-
-async function ensureDirs() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.mkdir(UPLOAD_DIR, { recursive: true });
+interface ProjectRow {
+  id: string;
+  owner_id: string;
+  name: string;
+  client_name: string | null;
+  website_url: string;
+  repo_url: string | null;
+  document: Project["document"];
+  checklist: ChecklistItem[] | null;
+  ai_analysis: AiAnalysis | null;
+  runs: VerificationRun[] | null;
+  created_at: string;
+  updated_at: string;
 }
 
-export async function readDb(): Promise<Database> {
-  await ensureDirs();
-  try {
-    const raw = await fs.readFile(DB_PATH, "utf8");
-    const parsed = JSON.parse(raw) as Database;
-    return {
-      users: parsed.users ?? [],
-      projects: parsed.projects ?? [],
-    };
-  } catch {
-    return structuredClone(EMPTY_DB);
-  }
-}
-
-async function writeDb(db: Database): Promise<void> {
-  await ensureDirs();
-  const tmp = `${DB_PATH}.${Date.now()}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(db, null, 2), "utf8");
-  await fs.rename(tmp, DB_PATH);
-}
-
-/**
- * Serialize all mutations so concurrent requests don't clobber the JSON file.
- */
-export function mutate<T>(fn: (db: Database) => Promise<T> | T): Promise<T> {
-  const run = writeQueue.then(async () => {
-    const db = await readDb();
-    const result = await fn(db);
-    await writeDb(db);
-    return result;
-  });
-  // Keep the queue chain alive even if a mutation rejects.
-  writeQueue = run.then(
-    () => undefined,
-    () => undefined,
-  );
-  return run;
-}
-
-export async function findUserByEmail(email: string): Promise<User | undefined> {
-  const db = await readDb();
-  return db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-}
-
-export async function findUserById(id: string): Promise<User | undefined> {
-  const db = await readDb();
-  return db.users.find((u) => u.id === id);
+function rowToProject(row: ProjectRow): Project {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    name: row.name,
+    clientName: row.client_name ?? "",
+    websiteUrl: row.website_url,
+    repoUrl: row.repo_url ?? "",
+    document: row.document ?? null,
+    checklist: row.checklist ?? [],
+    aiAnalysis: row.ai_analysis ?? null,
+    createdAt: new Date(row.created_at).toISOString(),
+    updatedAt: new Date(row.updated_at).toISOString(),
+    runs: row.runs ?? [],
+  };
 }
 
 export async function getProjectsForUser(userId: string): Promise<Project[]> {
-  const db = await readDb();
-  return db.projects
-    .filter((p) => p.ownerId === userId)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("projects")
+    .select("*")
+    .eq("owner_id", userId)
+    .order("updated_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data as ProjectRow[]).map(rowToProject);
 }
 
 export async function getProject(
   id: string,
   userId: string,
 ): Promise<Project | undefined> {
-  const db = await readDb();
-  return db.projects.find((p) => p.id === id && p.ownerId === userId);
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("projects")
+    .select("*")
+    .eq("id", id)
+    .eq("owner_id", userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? rowToProject(data as ProjectRow) : undefined;
+}
+
+export async function createProject(project: Project): Promise<void> {
+  const sb = getSupabase();
+  const { error } = await sb.from("projects").insert({
+    id: project.id,
+    owner_id: project.ownerId,
+    name: project.name,
+    client_name: project.clientName,
+    website_url: project.websiteUrl,
+    repo_url: project.repoUrl,
+    document: project.document,
+    checklist: project.checklist,
+    ai_analysis: project.aiAnalysis,
+    runs: project.runs,
+    created_at: project.createdAt,
+    updated_at: project.updatedAt,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteProject(
+  id: string,
+  userId: string,
+): Promise<boolean> {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from("projects")
+    .delete()
+    .eq("id", id)
+    .eq("owner_id", userId)
+    .select("id");
+  if (error) throw new Error(error.message);
+  return (data?.length ?? 0) > 0;
+}
+
+export async function updateChecklistItem(
+  id: string,
+  userId: string,
+  itemId: string,
+  patch: { checked?: boolean; note?: string },
+): Promise<ChecklistItem | null> {
+  const project = await getProject(id, userId);
+  if (!project) return null;
+  const item = project.checklist.find((c) => c.id === itemId);
+  if (!item) return null;
+  if (patch.checked !== undefined) item.checked = patch.checked;
+  if (patch.note !== undefined) item.note = patch.note;
+
+  const sb = getSupabase();
+  const { error } = await sb
+    .from("projects")
+    .update({
+      checklist: project.checklist,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("owner_id", userId);
+  if (error) throw new Error(error.message);
+  return item;
+}
+
+export async function addRun(
+  id: string,
+  userId: string,
+  run: VerificationRun,
+  maxRuns: number,
+): Promise<void> {
+  const project = await getProject(id, userId);
+  if (!project) return;
+  const runs = [run, ...project.runs].slice(0, maxRuns);
+
+  const sb = getSupabase();
+  const { error } = await sb
+    .from("projects")
+    .update({ runs, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("owner_id", userId);
+  if (error) throw new Error(error.message);
+}
+
+export async function setAnalysis(
+  id: string,
+  userId: string,
+  analysis: AiAnalysis,
+): Promise<void> {
+  const sb = getSupabase();
+  const { error } = await sb
+    .from("projects")
+    .update({ ai_analysis: analysis, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("owner_id", userId);
+  if (error) throw new Error(error.message);
 }

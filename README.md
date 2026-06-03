@@ -12,9 +12,9 @@ performance criteria.
 
 ## Features
 
-- **Authentication** — email + password accounts for internal members. Sessions
-  are signed JWTs stored in an httpOnly cookie; all app routes are protected by
-  middleware.
+- **Authentication** — internal members live in a Supabase `users` table with
+  bcrypt-hashed passwords. Sessions are signed JWTs stored in an httpOnly
+  cookie; all app routes are protected by middleware.
 - **Client document → checklist** — uploads are parsed (PDF, DOCX, TXT, MD) and
   requirement-like lines (checkboxes, bullets, numbered lists, "must/should/
   required" sentences) are extracted into an interactive, section-grouped
@@ -41,21 +41,25 @@ performance criteria.
 
 - Next.js 15 (App Router) + React 19 + TypeScript
 - Tailwind CSS v4
-- `jose` (JWT) + `bcryptjs` for auth
+- `jose` (JWT) sessions + `bcryptjs` for password hashing
+- Supabase (Postgres) for users and projects (parsed document text stored as JSONB)
 - `cheerio` for HTML analysis, `pdf-parse` + `mammoth` for documents
-- JSON file store under `data/` (no external database required)
 
 ## Getting started
 
 ```bash
 npm install
 
-# Set a session secret (required for stable sessions)
+# Configure environment
 cp .env.example .env.local
-# then edit AUTH_SECRET to a long random string
+# then set AUTH_SECRET, SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY
+
+# Create the database schema + seed a user:
+# open the Supabase SQL editor and run supabase/schema.sql
+# (edit the seeded email/password near the bottom first)
 
 npm run dev
-# open http://localhost:3000 → register an account → create a project
+# open http://localhost:3000 → sign in → create a project
 ```
 
 ### Environment variables

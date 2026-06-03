@@ -2,7 +2,6 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  passwordHash: string;
   createdAt: string;
 }
 
@@ -109,9 +108,4 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   runs: VerificationRun[];
-}
-
-export interface Database {
-  users: User[];
-  projects: Project[];
 }
