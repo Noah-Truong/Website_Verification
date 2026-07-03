@@ -45,6 +45,7 @@ export async function POST(
     if (err instanceof AiConfigError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
+    console.error("AI analysis failed:", err);
     return NextResponse.json(
       {
         error:

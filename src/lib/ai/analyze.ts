@@ -161,12 +161,26 @@ export async function analyzeRequirements(
     summarizeContent(pages),
   );
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: 4096,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userPrompt }],
-  });
+  // Each requirement yields one JSON assessment (~300 tokens with rationale +
+  // evidence). A fixed 4096 budget truncates the JSON for large checklists,
+  // which then fails to parse. Size the budget to the checklist and stream so
+  // long generations don't hit the non-streaming request limit.
+  const maxTokens = Math.min(2048 + requirements.length * 300, 32000);
+
+  const response = await client.messages
+    .stream({
+      model,
+      max_tokens: maxTokens,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userPrompt }],
+    })
+    .finalMessage();
+
+  if (response.stop_reason === "max_tokens") {
+    throw new Error(
+      "The model response was cut off before completing. Try analyzing fewer requirements at once.",
+    );
+  }
 
   const textPart = response.content.find((p) => p.type === "text");
   const rawText = textPart && "text" in textPart ? textPart.text : "";
