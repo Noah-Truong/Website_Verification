@@ -121,12 +121,20 @@ export function extractChecklist(
   return items;
 }
 
+// Postgres text/jsonb columns cannot store NUL (\u0000) bytes, which extractors
+// (especially PDF) can emit. Strip them (plus other lone control chars) so the
+// document can be persisted.
+function stripControlChars(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/[\u0000]/g, "");
+}
+
 export async function parseDocument(
   buffer: Buffer,
   fileName: string,
   mimeType: string,
 ): Promise<ParsedDocument> {
-  const text = await extractText(buffer, fileName, mimeType);
+  const text = stripControlChars(await extractText(buffer, fileName, mimeType));
   const items = extractChecklist(text);
   return { text, items };
 }
