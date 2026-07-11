@@ -2,6 +2,7 @@ import { getSupabase } from "./supabase";
 import type {
   AiAnalysis,
   ChecklistItem,
+  ClientDocument,
   Project,
   VerificationRun,
 } from "./types";
@@ -13,7 +14,7 @@ interface ProjectRow {
   client_name: string | null;
   website_url: string;
   repo_url: string | null;
-  document: Project["document"];
+  documents: ClientDocument[] | null;
   checklist: ChecklistItem[] | null;
   ai_analysis: AiAnalysis | null;
   runs: VerificationRun[] | null;
@@ -29,7 +30,7 @@ function rowToProject(row: ProjectRow): Project {
     clientName: row.client_name ?? "",
     websiteUrl: row.website_url,
     repoUrl: row.repo_url ?? "",
-    document: row.document ?? null,
+    documents: row.documents ?? [],
     checklist: row.checklist ?? [],
     aiAnalysis: row.ai_analysis ?? null,
     createdAt: new Date(row.created_at).toISOString(),
@@ -73,7 +74,7 @@ export async function createProject(project: Project): Promise<void> {
     client_name: project.clientName,
     website_url: project.websiteUrl,
     repo_url: project.repoUrl,
-    document: project.document,
+    documents: project.documents,
     checklist: project.checklist,
     ai_analysis: project.aiAnalysis,
     runs: project.runs,
@@ -138,6 +139,25 @@ export async function addRun(
   const { error } = await sb
     .from("projects")
     .update({ runs, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("owner_id", userId);
+  if (error) throw new Error(error.message);
+}
+
+export async function setDocuments(
+  id: string,
+  userId: string,
+  documents: ClientDocument[],
+  checklist: ChecklistItem[],
+): Promise<void> {
+  const sb = getSupabase();
+  const { error } = await sb
+    .from("projects")
+    .update({
+      documents,
+      checklist,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id)
     .eq("owner_id", userId);
   if (error) throw new Error(error.message);

@@ -1,12 +1,15 @@
 import "server-only";
 import mammoth from "mammoth";
 import { randomUUID } from "crypto";
-import type { ChecklistItem } from "../types";
+import type { ChecklistItem, ClientDocument } from "../types";
 
 export interface ParsedDocument {
   text: string;
   items: Omit<ChecklistItem, "checked" | "note">[];
 }
+
+export const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
+export const TEXT_PREVIEW_LIMIT = 20000;
 
 async function extractPdf(buffer: Buffer): Promise<string> {
   // Import the implementation directly to avoid pdf-parse's index debug code.
@@ -137,4 +140,32 @@ export async function parseDocument(
   const text = stripControlChars(await extractText(buffer, fileName, mimeType));
   const items = extractChecklist(text);
   return { text, items };
+}
+
+/**
+ * Parse an uploaded File into a stored ClientDocument plus the unchecked
+ * checklist items extracted from it (each tagged with the document's id).
+ */
+export async function parseUploadedFile(file: File): Promise<{
+  document: ClientDocument;
+  items: ChecklistItem[];
+}> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { text, items } = await parseDocument(buffer, file.name, file.type);
+  const document: ClientDocument = {
+    id: randomUUID(),
+    fileName: file.name,
+    mimeType: file.type || "application/octet-stream",
+    textPreview: text.slice(0, TEXT_PREVIEW_LIMIT),
+    charCount: text.length,
+    uploadedAt: new Date().toISOString(),
+  };
+  return {
+    document,
+    items: items.map((item) => ({
+      ...item,
+      checked: false,
+      documentId: document.id,
+    })),
+  };
 }

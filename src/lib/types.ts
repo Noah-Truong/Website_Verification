@@ -64,6 +64,8 @@ export interface ChecklistItem {
   checked: boolean;
   /** Optional note the developer adds when verifying the item. */
   note?: string;
+  /** Document the requirement was extracted from. */
+  documentId?: string;
 }
 
 export type RequirementStatus = "met" | "unmet" | "partial" | "unverifiable";
@@ -88,11 +90,13 @@ export interface AiAnalysis {
 }
 
 export interface ClientDocument {
+  id: string;
   fileName: string;
   mimeType: string;
   /** Raw extracted text, truncated for storage. */
   textPreview: string;
   charCount: number;
+  uploadedAt: string;
 }
 
 export interface Project {
@@ -102,7 +106,7 @@ export interface Project {
   clientName: string;
   websiteUrl: string;
   repoUrl: string;
-  document: ClientDocument | null;
+  documents: ClientDocument[];
   checklist: ChecklistItem[];
   aiAnalysis: AiAnalysis | null;
   createdAt: string;

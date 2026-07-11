@@ -6,6 +6,7 @@ import { VerifyButton } from "@/components/VerifyButton";
 import { ChecklistPanel } from "@/components/ChecklistPanel";
 import { RunResults } from "@/components/RunResults";
 import { DeleteProjectButton } from "@/components/DeleteProjectButton";
+import { ProjectDocuments } from "@/components/ProjectDocuments";
 import { scoreColor } from "@/components/Visuals";
 
 export default async function ProjectPage({
@@ -20,6 +21,16 @@ export default async function ProjectPage({
   if (!project) notFound();
 
   const latest = project.runs[0];
+
+  // Per-document requirement counts for the documents panel. Items created
+  // before multi-document support carry no documentId; attribute them to the
+  // first (migrated) document.
+  const requirementCounts: Record<string, number> = {};
+  for (const item of project.checklist) {
+    const docId = item.documentId ?? project.documents[0]?.id;
+    if (!docId) continue;
+    requirementCounts[docId] = (requirementCounts[docId] ?? 0) + 1;
+  }
 
   return (
     <div className="rise flex flex-col gap-8">
@@ -55,8 +66,11 @@ export default async function ProjectPage({
                   ⎇ repository
                 </a>
               )}
-              {project.document && (
-                <span className="text-muted">▤ {project.document.fileName}</span>
+              {project.documents.length > 0 && (
+                <span className="text-muted">
+                  ▤ {project.documents.length} document
+                  {project.documents.length === 1 ? "" : "s"}
+                </span>
               )}
             </div>
           </div>
@@ -125,24 +139,19 @@ export default async function ProjectPage({
         {/* Checklist sidebar */}
         <aside className="flex flex-col gap-4">
           <ChecklistPanel
+            key={project.updatedAt}
             projectId={project.id}
             initialItems={project.checklist}
             initialAnalysis={project.aiAnalysis}
             hasRun={project.runs.length > 0}
           />
 
-          {project.document && (
-            <div className="panel p-4">
-              <p className="label-eyebrow mb-2">Source document</p>
-              <p className="mono text-xs text-muted">
-                {project.document.fileName}
-              </p>
-              <p className="mono text-xs text-faint mt-1">
-                {project.document.charCount.toLocaleString()} characters parsed ·{" "}
-                {project.checklist.length} requirements extracted
-              </p>
-            </div>
-          )}
+          <ProjectDocuments
+            projectId={project.id}
+            documents={project.documents}
+            requirementCounts={requirementCounts}
+          />
+
 
           <div className="flex justify-end">
             <DeleteProjectButton projectId={project.id} />

@@ -2,12 +2,9 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getSessionUserId } from "@/lib/auth";
 import { getProjectsForUser, createProject } from "@/lib/db";
-import { parseDocument } from "@/lib/parse/document";
+import { MAX_FILE_BYTES, parseUploadedFile } from "@/lib/parse/document";
 import { normalizeUrl } from "@/lib/verify/utils";
 import type { ChecklistItem, ClientDocument, Project } from "@/lib/types";
-
-const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
-const TEXT_PREVIEW_LIMIT = 20000;
 
 export async function GET() {
   const userId = await getSessionUserId();
@@ -48,7 +45,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Website URL is invalid." }, { status: 400 });
   }
 
-  let document: ClientDocument | null = null;
+  const documents: ClientDocument[] = [];
   let checklist: ChecklistItem[] = [];
 
   if (file && file instanceof File && file.size > 0) {
@@ -58,16 +55,10 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    const buffer = Buffer.from(await file.arrayBuffer());
     try {
-      const parsed = await parseDocument(buffer, file.name, file.type);
-      document = {
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
-        textPreview: parsed.text.slice(0, TEXT_PREVIEW_LIMIT),
-        charCount: parsed.text.length,
-      };
-      checklist = parsed.items.map((item) => ({ ...item, checked: false }));
+      const parsed = await parseUploadedFile(file);
+      documents.push(parsed.document);
+      checklist = parsed.items;
     } catch {
       return NextResponse.json(
         { error: "Could not read the uploaded document. Try PDF, DOCX, TXT, or MD." },
@@ -84,7 +75,7 @@ export async function POST(req: Request) {
     clientName,
     websiteUrl,
     repoUrl,
-    document,
+    documents,
     checklist,
     aiAnalysis: null,
     createdAt: now,

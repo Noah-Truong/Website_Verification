@@ -13,7 +13,7 @@ create table if not exists public.users (
   created_at    timestamptz not null default now()
 );
 
--- Verification projects. Nested data (document, checklist, runs, AI analysis)
+-- Verification projects. Nested data (documents, checklist, runs, AI analysis)
 -- is stored as JSONB to mirror the application's Project shape.
 create table if not exists public.projects (
   id           uuid primary key default gen_random_uuid(),
@@ -22,7 +22,7 @@ create table if not exists public.projects (
   client_name  text not null default '',
   website_url  text not null,
   repo_url     text not null default '',
-  document     jsonb,
+  documents    jsonb not null default '[]'::jsonb,
   checklist    jsonb not null default '[]'::jsonb,
   ai_analysis  jsonb,
   runs         jsonb not null default '[]'::jsonb,
