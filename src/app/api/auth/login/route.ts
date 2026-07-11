@@ -25,7 +25,16 @@ export async function POST(req: Request) {
   }
 
   const { email, password } = parsed.data;
-  const user = await verifyCredentials(email, password);
+  let user;
+  try {
+    user = await verifyCredentials(email, password);
+  } catch (err) {
+    console.error("Login failed: could not reach the database.", err);
+    return NextResponse.json(
+      { error: "Cannot reach the database. Check that the Supabase project is active." },
+      { status: 503 },
+    );
+  }
   if (!user) {
     return NextResponse.json(
       { error: "Incorrect email or password." },
